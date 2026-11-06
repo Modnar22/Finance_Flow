@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Installers (publicados como Release no GitHub, não no repositório)
+*.AppImage
+*.deb
+*.exe
+*.blockmap
+latest.yml
+
+# Electron
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.backup
+
+# Environment
+.env
+.env.local

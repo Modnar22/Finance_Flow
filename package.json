@@ -1,0 +1,75 @@
+{
+  "name": "financeflow",
+  "version": "1.0.0",
+  "description": "Dashboard financeiro pessoal com interface moderna. Gerencie receitas, despesas, orçamento, cartões de crédito e transações recorrentes.",
+  "main": "main.js",
+  "author": {
+    "name": "Mateus Gouveia",
+    "url": "https://github.com/Modnar22"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Modnar22/FinanceFlow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Modnar22/FinanceFlow.git"
+  },
+  "keywords": [
+    "finance",
+    "financeiro",
+    "controle-financeiro",
+    "dashboard",
+    "orcamento",
+    "despesas",
+    "receitas"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.financeflow.app",
+    "productName": "FinanceFlow",
+    "copyright": "© 2026 Mateus Gouveia",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules",
+      "!dist",
+      "!*.AppImage",
+      "!*.deb",
+      "!*.exe",
+      "!*.blockmap",
+      "!latest.yml",
+      "!builder-debug.yml"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Finance"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FinanceFlow"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  }
+}

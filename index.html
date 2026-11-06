@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceFlow - Controle Financeiro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-icon">
+                        <i class="fas fa-wave-square"></i>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-name">FinanceFlow</span>
+                        <span class="brand-sub">Controle Pessoal</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-link active" data-section="dashboard">
+                    <div class="nav-icon"><i class="fas fa-th-large"></i></div>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link" data-section="transactions">
+                    <div class="nav-icon"><i class="fas fa-arrow-right-arrow-left"></i></div>
+                    <span>Transações</span>
+                </a>
+                <a href="#" class="nav-link" data-section="budget">
+                    <div class="nav-icon"><i class="fas fa-bullseye"></i></div>
+                    <span>Orçamento</span>
+                </a>
+                <a href="#" class="nav-link" data-section="recurring">
+                    <div class="nav-icon"><i class="fas fa-rotate"></i></div>
+                    <span>Recorrentes</span>
+                </a>
+                <a href="#" class="nav-link" data-section="history">
+                    <div class="nav-icon"><i class="fas fa-clock-rotate-left"></i></div>
+                    <span>Histórico</span>
+                </a>
+                <a href="#" class="nav-link" data-section="settings">
+                    <div class="nav-icon"><i class="fas fa-sliders"></i></div>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn-ghost btn-export" onclick="app.exportAll()">
+                    <i class="fas fa-arrow-down-to-line"></i>
+                    <span>Exportar Dados</span>
+                </button>
+                <button class="btn-ghost btn-export" onclick="document.getElementById('importFile').click()">
+                    <i class="fas fa-arrow-up-from-line"></i>
+                    <span>Importar Dados</span>
+                </button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="app.importAll(event)">
+                <button class="btn-ghost btn-export" onclick="Tutorial.restart()">
+                    <i class="fas fa-circle-question"></i>
+                    <span>Tutorial</span>
+                </button>
+                <div class="keyboard-hint">
+                    <kbd>N</kbd> Nova transação · <kbd>T</kbd> Tema · <kbd>←</kbd><kbd>→</kbd> Mês
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main" id="mainContent">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="btn-icon mobile-menu" id="mobileMenuBtn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="month-nav">
+                        <button class="btn-month" id="prevMonth" title="Mês anterior (←)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h1 class="month-title" id="currentMonth">Julho 2026</h1>
+                        <button class="btn-month" id="nextMonth" title="Próximo mês (→)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn btn-primary" id="btnAddTransaction">
+                        <i class="fas fa-plus"></i>
+                        <span>Nova Transação</span>
+                    </button>
+                    <button class="btn-icon" id="themeToggle" title="Alternar tema (T)">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Dashboard -->
+                <section class="page active" id="section-dashboard">
+                    <div class="stats-grid">
+                        <div class="stat-card stat-balance">
+                            <div class="stat-header">
+                                <span class="stat-label">Saldo do Mês</span>
+                                <div class="stat-icon"><i class="fas fa-wallet"></i></div>
+                            </div>
+                            <div class="stat-value" id="monthBalance">R$ 0,00</div>
+                            <div class="stat-footer">
+                                <span class="stat-badge neutral">Resultado mensal</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-income">
+                            <div class="stat-header">
+                                <span class="stat-label">Receitas</span>
+                                <div class="stat-icon"><i class="fas fa-arrow-trend-up"></i></div>
+                            </div>
+                            <div class="stat-value" id="monthIncome">R$ 0,00</div>
+                            <div class="stat-footer">
+                                <span class="stat-badge success">Entradas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-expense">
+                            <div class="stat-header">
+                                <span class="stat-label">Despesas</span>
+                                <div class="stat-icon"><i class="fas fa-arrow-trend-down"></i></div>
+                            </div>
+                            <div class="stat-value" id="monthExpense">R$ 0,00</div>
+                            <div class="stat-footer">
+                                <span class="stat-badge danger">Saídas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-credit">
+                            <div class="stat-header">
+                                <span class="stat-label">Crédito Disponível</span>
+                                <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
+                            </div>
+                            <div class="stat-value" id="creditLimit">R$ 0,00</div>
+                            <div class="credit-breakdown">
+                                <div class="credit-bar">
+                                    <div class="credit-bar-fill" id="creditBarFill" style="width: 0%"></div>
+                                </div>
+                                <div class="credit-info">
+                                    <span>Usado: <strong id="creditUsed">R$ 0,00</strong></span>
+                                    <span>Limite: <strong id="creditTotal">R$ 0,00</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cards-section" id="cardsDashboard"></div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Gastos por Categoria</h3>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Evolução Mensal</h3>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="monthlyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <h3>Transações do Mês</h3>
+                        </div>
+                        <div id="recentList" class="tx-list"></div>
+                    </div>
+                </section>
+
+                <!-- Transactions -->
+                <section class="page" id="section-transactions">
+                    <div class="page-header">
+                        <h2>Transações</h2>
+                        <div class="toolbar">
+                            <div class="search-field">
+                                <i class="fas fa-magnifying-glass"></i>
+                                <input type="text" id="searchInput" placeholder="Buscar nome, valor...">
+                            </div>
+                            <select class="select-field" id="filterType">
+                                <option value="all">Todos</option>
+                                <option value="income">Receitas</option>
+                                <option value="expense">Despesas</option>
+                            </select>
+                            <select class="select-field" id="filterCategory">
+                                <option value="all">Categorias</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tx-totals" id="txTotals"></div>
+                    <div id="transactionList" class="tx-list"></div>
+                </section>
+
+                <!-- Budget -->
+                <section class="page" id="section-budget">
+                    <div class="page-header">
+                        <h2>Orçamento Mensal</h2>
+                    </div>
+                    <div class="budget-overview">
+                        <div class="budget-stat">
+                            <span class="budget-stat-label">Total Orçado</span>
+                            <span class="budget-stat-value" id="totalBudget">R$ 0,00</span>
+                        </div>
+                        <div class="budget-stat">
+                            <span class="budget-stat-label">Total Gasto</span>
+                            <span class="budget-stat-value spent" id="totalSpent">R$ 0,00</span>
+                        </div>
+                        <div class="budget-stat">
+                            <span class="budget-stat-label">Restante</span>
+                            <span class="budget-stat-value remaining" id="totalRemaining">R$ 0,00</span>
+                        </div>
+                    </div>
+                    <div id="budgetList" class="budget-list"></div>
+                </section>
+
+                <!-- Recurring -->
+                <section class="page" id="section-recurring">
+                    <div class="page-header">
+                        <h2>Transações Recorrentes</h2>
+                        <button class="btn btn-primary" id="btnAddRecurring">
+                            <i class="fas fa-plus"></i>
+                            <span>Nova Recorrente</span>
+                        </button>
+                    </div>
+                    <div class="recurring-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Transações recorrentes são geradas automaticamente no início de cada mês.</span>
+                    </div>
+                    <div id="recurringList" class="tx-list"></div>
+                </section>
+
+                <!-- History -->
+                <section class="page" id="section-history">
+                    <div class="page-header">
+                        <h2>Histórico Mensal</h2>
+                    </div>
+                    <div class="month-pills" id="historyNav">
+                        <button class="pill active" data-month="0">Jan</button>
+                        <button class="pill" data-month="1">Fev</button>
+                        <button class="pill" data-month="2">Mar</button>
+                        <button class="pill" data-month="3">Abr</button>
+                        <button class="pill" data-month="4">Mai</button>
+                        <button class="pill" data-month="5">Jun</button>
+                        <button class="pill" data-month="6">Jul</button>
+                        <button class="pill" data-month="7">Ago</button>
+                        <button class="pill" data-month="8">Set</button>
+                        <button class="pill" data-month="9">Out</button>
+                        <button class="pill" data-month="10">Nov</button>
+                        <button class="pill" data-month="11">Dez</button>
+                    </div>
+                    <div class="history-stats" id="historySummary"></div>
+                    <div id="historyList" class="tx-list"></div>
+                </section>
+
+                <!-- Settings -->
+                <section class="page" id="section-settings">
+                    <div class="page-header">
+                        <h2>Configurações</h2>
+                    </div>
+                    <div class="settings-layout">
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <div class="settings-card-icon credit"><i class="fas fa-credit-card"></i></div>
+                                <div>
+                                    <h3>Cartões de Crédito</h3>
+                                    <p>Gerencie seus cartões e limites</p>
+                                </div>
+                            </div>
+                            <div class="settings-card-body">
+                                <div class="input-row">
+                                    <input type="text" id="inputCardName" placeholder="Nome do cartão">
+                                    <input type="color" id="inputCardColor" value="#6366f1">
+                                </div>
+                                <div class="input-with-prefix">
+                                    <span class="input-prefix">R$</span>
+                                    <input type="number" id="inputCardLimit" step="0.01" min="0" placeholder="Limite do cartão">
+                                </div>
+                                <button class="btn btn-primary btn-full" onclick="app.addCard()">
+                                    <i class="fas fa-plus"></i> Adicionar Cartão
+                                </button>
+                                <div id="cardList" class="card-list"></div>
+                            </div>
+                        </div>
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <div class="settings-card-icon categories"><i class="fas fa-palette"></i></div>
+                                <div>
+                                    <h3>Categorias</h3>
+                                    <p>Gerencie suas categorias</p>
+                                </div>
+                            </div>
+                            <div class="settings-card-body">
+                                <div class="input-row">
+                                    <input type="text" id="inputNewCategory" placeholder="Nova categoria">
+                                    <input type="color" id="inputCategoryColor" value="#6366f1">
+                                </div>
+                                <button class="btn btn-primary btn-full" onclick="app.addCategory()">
+                                    <i class="fas fa-plus"></i> Adicionar
+                                </button>
+                                <div id="categoryList" class="category-chips"></div>
+                            </div>
+                        </div>
+                        <div class="settings-card danger">
+                            <div class="settings-card-header">
+                                <div class="settings-card-icon danger"><i class="fas fa-triangle-exclamation"></i></div>
+                                <div>
+                                    <h3>Zona de Perigo</h3>
+                                    <p>Ações irreversíveis</p>
+                                </div>
+                            </div>
+                            <div class="settings-card-body">
+                                <p class="danger-text">Apagar todos os seus dados? Esta ação não pode ser desfeita.</p>
+                                <button class="btn btn-danger btn-full" onclick="app.clearAllData()">
+                                    <i class="fas fa-trash"></i> Limpar Todos os Dados
+                                </button>
+                                <p class="danger-text" style="margin-top:12px">Remover transações recorrentes duplicadas?</p>
+                                <button class="btn btn-ghost btn-full" onclick="app.cleanDuplicates()">
+                                    <i class="fas fa-broom"></i> Limpar Duplicatas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-backdrop" id="modalOverlay">
+        <div class="modal" id="transactionModal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Nova Transação</h3>
+                <button class="btn-close" id="btnCloseModal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <form id="transactionForm" class="modal-body">
+                <div class="form-section">
+                    <label class="form-label">Tipo</label>
+                    <div class="type-switcher">
+                        <button type="button" class="type-opt active" data-type="expense">
+                            <i class="fas fa-arrow-up"></i> Despesa
+                        </button>
+                        <button type="button" class="type-opt" data-type="income">
+                            <i class="fas fa-arrow-down"></i> Receita
+                        </button>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputDescription">Descrição</label>
+                    <input type="text" id="inputDescription" class="form-input" required placeholder="Ex: Supermercado">
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputAmount">Valor (R$)</label>
+                    <input type="number" id="inputAmount" class="form-input" step="0.01" min="0.01" required placeholder="0,00">
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputCategory">Categoria</label>
+                    <select id="inputCategory" class="form-input" required></select>
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputDate">Data</label>
+                    <input type="date" id="inputDate" class="form-input" required>
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputInstallments">Parcelas</label>
+                    <div class="installment-row">
+                        <input type="number" id="inputInstallments" class="form-input" min="1" max="60" value="1">
+                        <span class="installment-info" id="installmentLabel">1x (à vista)</span>
+                    </div>
+                    <div class="installment-tags" id="installmentPreview"></div>
+                </div>
+                <div class="form-section" id="cardSelectorSection" style="display:none">
+                    <label class="form-label" for="inputCard">Cartão de Crédito</label>
+                    <select id="inputCard" class="form-input">
+                        <option value="">Nenhum cartão</option>
+                    </select>
+                    <div class="card-limit-info" id="cardLimitInfo"></div>
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputNote">Observação</label>
+                    <textarea id="inputNote" class="form-input" rows="2" placeholder="Opcional..."></textarea>
+                </div>
+                <input type="hidden" id="editTransactionId" value="">
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="btnCancelModal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" form="transactionForm">
+                    <i class="fas fa-check"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recurring Modal -->
+    <div class="modal-backdrop" id="recurringModalOverlay">
+        <div class="modal" id="recurringModal">
+            <div class="modal-header">
+                <h3 id="recurringModalTitle">Nova Transação Recorrente</h3>
+                <button class="btn-close" id="btnCloseRecurringModal">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <form id="recurringForm" class="modal-body">
+                <div class="form-section">
+                    <label class="form-label">Tipo</label>
+                    <div class="type-switcher">
+                        <button type="button" class="type-opt active" data-type="expense" data-form="recurring">
+                            <i class="fas fa-arrow-up"></i> Despesa
+                        </button>
+                        <button type="button" class="type-opt" data-type="income" data-form="recurring">
+                            <i class="fas fa-arrow-down"></i> Receita
+                        </button>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputRecDescription">Descrição</label>
+                    <input type="text" id="inputRecDescription" class="form-input" required placeholder="Ex: Aluguel">
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputRecAmount">Valor (R$)</label>
+                    <input type="number" id="inputRecAmount" class="form-input" step="0.01" min="0.01" required placeholder="0,00">
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputRecCategory">Categoria</label>
+                    <select id="inputRecCategory" class="form-input" required></select>
+                </div>
+                <div class="form-section">
+                    <label class="form-label" for="inputRecDay">Dia do mês</label>
+                    <input type="number" id="inputRecDay" class="form-input" min="1" max="28" value="1" required>
+                </div>
+                <input type="hidden" id="editRecurringId" value="">
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="btnCancelRecurringModal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" form="recurringForm">
+                    <i class="fas fa-check"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Tutorial Overlay -->
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-spotlight" id="tutorialSpotlight"></div>
+        <div class="tutorial-card" id="tutorialCard">
+            <div class="tutorial-card-header">
+                <span class="tutorial-step-badge" id="tutorialStepBadge">1/10</span>
+                <button class="tutorial-close" id="tutorialClose" title="Pular tutorial">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="tutorial-card-body">
+                <div class="tutorial-icon" id="tutorialIcon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3 class="tutorial-title" id="tutorialTitle">Bem-vindo ao FinanceFlow!</h3>
+                <p class="tutorial-text" id="tutorialText">Vamos mostrar como usar o sistema.</p>
+                <div class="tutorial-shortcut" id="tutorialShortcut" style="display:none">
+                    <span>Atalho:</span>
+                    <kbd id="tutorialKbd">N</kbd>
+                </div>
+            </div>
+            <div class="tutorial-card-footer">
+                <button class="btn btn-ghost" id="tutorialSkip">Pular</button>
+                <div class="tutorial-dots" id="tutorialDots"></div>
+                <button class="btn btn-primary" id="tutorialNext">
+                    Próximo <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        if (window.electronAPI) {
+            window.electronAPI.onMenuExport(() => app.exportAll());
+            window.electronAPI.onMenuImport(() => document.getElementById('importFile').click());
+        }
+    </script>
+</body>
+</html>
