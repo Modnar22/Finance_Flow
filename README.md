@@ -26,15 +26,15 @@ GitHub: [github.com/Modnar22](https://github.com/Modnar22)
 
 | Sistema | Arquivo | Tamanho |
 |---------|---------|---------|
-| Windows | [FinanceFlow-Setup-1.0.0.exe](https://github.com/Modnar22/Finantial_FinanceFlowapp/releases/download/v1.0.0_Windows/FinanceFlow-Setup-1.0.0.exe) | 73 MB |
-| Linux (Debian/Ubuntu) | [financeflow_1.0.0_amd64.deb](https://github.com/Modnar22/Finantial_FinanceFlowapp/releases/download/v1.0.0/financeflow_1.0.0_amd64.deb) | 70 MB |
-| Android | [app-debug.apk](https://github.com/Modnar22/Finantial_FinanceFlowapp/releases/download/v1.0.0_APK/app-debug.apk) | 4 MB |
+| Windows | [FinanceFlow-Setup-1.0.0.exe](https://github.com/Modnar22/Finance_Flow/releases/download/v1.0.0_Windows/FinanceFlow-Setup-1.0.0.exe) | 73 MB |
+| Linux (Debian/Ubuntu) | [financeflow_1.0.0_amd64.deb](https://github.com/Modnar22/Finance_Flow/releases/download/v1.0.0/financeflow_1.0.0_amd64.deb) | 70 MB |
+| Android | [app-debug.apk](https://github.com/Modnar22/Finance_Flow/releases/download/v1.0.0_APK/app-debug.apk) | 4 MB |
 
 **Windows:** baixe o `.exe`, dê duplo clique e siga o assistente de instalação.
 
 **Linux:** `sudo dpkg -i financeflow_1.0.0_amd64.deb`
 
-**Todas as versões:** [github.com/Modnar22/Finantial_FinanceFlowapp/releases](https://github.com/Modnar22/Finantial_FinanceFlowapp/releases)
+**Todas as versões:** [github.com/Modnar22/Finance_Flow/releases](https://github.com/Modnar22/Finance_Flow/releases)
 
 ## Como Usar (Navegador)
 
