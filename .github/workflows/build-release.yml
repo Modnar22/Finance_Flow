@@ -1,0 +1,147 @@
+name: Build Release Assets
+
+# Gera os instaladores do FinanceFlow na nuvem e publica como asset dos
+# Releases. Evita dois problemas locais:
+#   - Windows: o Smart App Control bloqueia a execucao do .exe intermediario
+#     gerado pelo electron-builder (spawn UNKNOWN).
+#   - Linux: exige fpm (Ruby) e privilegio de symlink para o AppImage.
+#
+# Uso:
+#   - Dispare manualmente na aba Actions (workflow_dispatch)
+#   - Ou envie uma tag: git tag v1.0.0_Windows && git push origin --tags
+#
+# Cada job publica sempre no SEU proprio release. O status de pre-release
+# dos releases NUNCA e alterado por este workflow.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows (NSIS installer)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installer
+        run: npm run build:win
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinanceFlow-Windows
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+
+      - name: Publish to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v1.0.0_Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG nao existe. O instalador esta como artifact desta execucao."
+            exit 0
+          fi
+
+          # Remove instaladores antigos (nome fixo) para evitar duplicata.
+          for existing in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
+            case "$existing" in
+              FinanceFlow-Setup-*.exe)
+                echo "Removendo asset antigo: $existing"
+                gh release delete-asset "$TAG" "$existing" --yes
+                ;;
+            esac
+          done
+
+          echo "Publicando instalador Windows em $TAG"
+          gh release upload "$TAG" "dist/FinanceFlow Setup 1.0.0.exe#FinanceFlow-Setup-1.0.0.exe" --clobber
+          echo "Windows publicado com sucesso."
+
+  linux:
+    name: Linux (.deb)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+          sudo gem install fpm --no-document
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build .deb
+        run: npx electron-builder --linux deb
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinanceFlow-Linux
+          path: |
+            dist/*.deb
+          if-no-files-found: error
+
+      - name: Publish to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v1.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG nao existe. O .deb esta como artifact desta execucao."
+            exit 0
+          fi
+
+          for existing in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
+            case "$existing" in
+              financeflow_*.deb)
+                echo "Removendo asset antigo: $existing"
+                gh release delete-asset "$TAG" "$existing" --yes
+                ;;
+            esac
+          done
+
+          files=()
+          for f in dist/financeflow_*.deb; do
+            [ -e "$f" ] && files+=("$f")
+          done
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Nenhum .deb gerado."
+            exit 1
+          fi
+
+          echo "Publicando .deb em $TAG"
+          gh release upload "$TAG" "${files[@]}" --clobber
+          echo "Linux publicado com sucesso."
