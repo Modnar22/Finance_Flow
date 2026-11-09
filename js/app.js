@@ -73,6 +73,14 @@ const app = {
         // Card selector change
         document.getElementById('inputCard').addEventListener('change', () => this.updateCardLimitInfo());
 
+        // Installments panel
+        document.getElementById('btnCloseInstallments').addEventListener('click', () => this.closeInstallments());
+        document.getElementById('btnCancelInstallments').addEventListener('click', () => this.closeInstallments());
+        document.getElementById('btnSaveInstallments').addEventListener('click', () => this.saveInstallments());
+        document.getElementById('installmentsOverlay').addEventListener('click', e => {
+            if (e.target === e.currentTarget) this.closeInstallments();
+        });
+
         // Filters
         document.getElementById('filterType').addEventListener('change', () => this.renderTransactions());
         document.getElementById('filterCategory').addEventListener('change', () => this.renderTransactions());
@@ -118,6 +126,17 @@ const app = {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', e => {
+            const installmentsOpen = !!this.currentInstallmentsGroup;
+
+            // Esc fecha o painel de parcelas (mesmo com foco num campo)
+            if (e.key === 'Escape' && installmentsOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeInstallments();
+                return;
+            }
+            if (installmentsOpen) return;
+
             if (this.confirmOpen) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
             if (e.key === 'n' || e.key === 'N') { e.preventDefault(); this.openModal(); }
@@ -349,7 +368,9 @@ const app = {
             const paidClass = t.paid ? 'paid' : '';
 
             let badge = '';
-            if (t.installments && t.installments > 1) {
+            if (t.installments && t.installments > 1 && t.groupId) {
+                badge = `<button type="button" class="tx-badge tx-badge-btn" onclick="app.openInstallments('${t.groupId}')" title="Ver todas as parcelas">${t.installmentCurrent}/${t.installments}</button>`;
+            } else if (t.installments && t.installments > 1) {
                 badge = `<span class="tx-badge">${t.installmentCurrent}/${t.installments}</span>`;
             }
 
@@ -475,7 +496,15 @@ const app = {
                 let desc = tx.description;
                 if (tx.installments > 1 && tx.groupId) desc = desc.replace(/\s*\(\d+\/\d+\)$/, '');
                 document.getElementById('inputDescription').value = desc;
-                document.getElementById('inputAmount').value = tx.installments > 1 && tx.groupId ? tx.amount * tx.installments : tx.amount;
+                if (tx.installments > 1 && tx.groupId) {
+                    // total REAL do grupo (parcelas podem ter valores diferentes)
+                    const total = Storage.getTransactions()
+                        .filter(t => t.groupId === tx.groupId)
+                        .reduce((s, t) => s + Number(t.amount || 0), 0);
+                    document.getElementById('inputAmount').value = Math.round(total * 100) / 100;
+                } else {
+                    document.getElementById('inputAmount').value = tx.amount;
+                }
                 document.getElementById('inputCategory').value = tx.categoryId;
                 document.getElementById('inputDate').value = tx.date;
                 document.getElementById('inputNote').value = tx.note || '';
@@ -543,6 +572,92 @@ const app = {
         });
     },
 
+    // ========== PANEL DE PARCELAS ==========
+    openInstallments(groupId) {
+        const group = Storage.getTransactions()
+            .filter(t => t.groupId === groupId)
+            .sort((a, b) => a.installmentCurrent - b.installmentCurrent);
+        if (!group.length) return;
+
+        this.currentInstallmentsGroup = groupId;
+
+        const first = group[0];
+        let desc = first.description.replace(/\s*\(\d+\/\d+\)$/, '');
+        document.getElementById('installmentsTitle').textContent = `${desc} — ${group.length}x`;
+        document.getElementById('installmentsHint').textContent =
+            'Ajuste a data de pagamento e o valor de cada parcela. ' +
+            'Apenas a parcela alterada se move — as demais mantêm sua data.';
+
+        document.getElementById('installmentsList').innerHTML = group.map(t => {
+            const d = new Date(t.date + 'T00:00:00');
+            const month = Utils.getMonthNameShort(d.getMonth());
+            return `
+                <div class="inst-row ${t.paid ? 'is-paid' : ''}" data-id="${t.id}">
+                    <span class="inst-num">${t.installmentCurrent}</span>
+                    <input type="date" class="form-input inst-date" value="${t.date}" data-id="${t.id}">
+                    <span class="inst-month">${month}</span>
+                    <input type="number" class="form-input inst-amount" step="0.01" min="0.01" value="${t.amount}" data-id="${t.id}">
+                    <span class="inst-status ${t.paid ? 'paid' : ''}">
+                        <i class="fas ${t.paid ? 'fa-circle-check' : 'fa-circle'}"></i>
+                        ${t.paid ? 'Pago' : 'Pendente'}
+                    </span>
+                </div>`;
+        }).join('');
+
+        // atualiza o rotulo de mes em tempo real
+        document.querySelectorAll('#installmentsList .inst-date').forEach(input => {
+            input.addEventListener('change', e => {
+                const row = e.target.closest('.inst-row');
+                const d = new Date(e.target.value + 'T00:00:00');
+                if (!isNaN(d)) row.querySelector('.inst-month').textContent = Utils.getMonthNameShort(d.getMonth());
+                this.updateInstallmentsTotal();
+            });
+        });
+        document.querySelectorAll('#installmentsList .inst-amount').forEach(input => {
+            input.addEventListener('input', () => this.updateInstallmentsTotal());
+        });
+
+        this.updateInstallmentsTotal();
+        document.getElementById('installmentsOverlay').classList.add('active');
+    },
+
+    updateInstallmentsTotal() {
+        const sum = [...document.querySelectorAll('#installmentsList .inst-amount')]
+            .reduce((s, i) => s + (parseFloat(i.value) || 0), 0);
+        const el = document.getElementById('installmentsTotal');
+        el.innerHTML = `Total: <strong>${Utils.formatCurrency(sum)}</strong>`;
+    },
+
+    closeInstallments() {
+        this.currentInstallmentsGroup = null;
+        document.getElementById('installmentsOverlay').classList.remove('active');
+    },
+
+    saveInstallments() {
+        const all = Storage.getTransactions();
+        const rows = [...document.querySelectorAll('#installmentsList .inst-row')];
+        if (!rows.length) return this.closeInstallments();
+
+        for (const row of rows) {
+            const date = row.querySelector('.inst-date').value;
+            const amount = parseFloat(row.querySelector('.inst-amount').value);
+            if (!date) { Utils.toast('Informe a data de todas as parcelas', 'error'); return; }
+            if (!amount || amount <= 0) { Utils.toast('Valor inválido na parcela ' + row.querySelector('.inst-num').textContent, 'error'); return; }
+        }
+
+        rows.forEach(row => {
+            const tx = all.find(t => t.id === row.dataset.id);
+            if (!tx) return;
+            tx.date = row.querySelector('.inst-date').value;
+            tx.amount = Math.round(parseFloat(row.querySelector('.inst-amount').value) * 100) / 100;
+        });
+
+        Storage.saveTransactions(all);
+        this.closeInstallments();
+        this.refreshAll();
+        Utils.toast('Parcelas atualizadas!', 'success');
+    },
+
     updateInstallmentPreview() {
         const n = parseInt(document.getElementById('inputInstallments').value) || 1;
         const amt = parseFloat(document.getElementById('inputAmount').value) || 0;
@@ -582,17 +697,39 @@ const app = {
         if (editId) {
             const existing = Storage.getTransactions().find(t => t.id === editId);
             if (existing && existing.groupId && existing.installments > 1) {
-                const amt = totalAmount / installments;
                 const all = Storage.getTransactions();
-                all.forEach(t => {
-                    if (t.groupId === existing.groupId) {
-                        t.description = `${description} (${t.installmentCurrent}/${installments})`;
-                    }
-                });
+                const group = all.filter(t => t.groupId === existing.groupId);
+                const n = group.length || installments;
+
+                // 1) descricoes + campos comuns do grupo
+                group.forEach(t => { t.description = `${description} (${t.installmentCurrent}/${n})`; });
+
+                // 2) DATA: somente a parcela editada muda de lugar
+                const target = group.find(t => t.id === editId);
+                if (target && dateStr) target.date = dateStr;
+
+                // 3) VALOR: redistribui so se o total realmente mudou
+                //    (preserva valores ja corrigidos manualmente no painel)
+                const currentTotal = group.reduce((s, t) => s + Number(t.amount || 0), 0);
+                if (Math.abs(totalAmount - currentTotal) > 0.005) {
+                    const factor = currentTotal > 0 ? totalAmount / currentTotal : 0;
+                    let acc = 0;
+                    group.forEach((t, i) => {
+                        if (i === group.length - 1) {
+                            t.amount = Math.round((totalAmount - acc) * 100) / 100;
+                        } else {
+                            const v = currentTotal > 0 ? Number(t.amount || 0) * factor : totalAmount / n;
+                            const r = Math.round(v * 100) / 100;
+                            t.amount = r;
+                            acc += r;
+                        }
+                    });
+                }
+
+                group.forEach(t => { t.type = type; t.categoryId = categoryId; t.note = note; t.cardId = cardId; });
                 Storage.saveTransactions(all);
-                Storage.updateGroup(existing.groupId, { type, categoryId, note, amount: amt, cardId });
             } else {
-                Storage.updateTransaction(editId, { type, description, amount: totalAmount, categoryId, date: dateStr, note, installments, installmentCurrent: 1, groupId: null, paid: isPast, cardId });
+                Storage.updateTransaction(editId, { type, description, amount: totalAmount, categoryId, date: dateStr, note, installments, installmentCurrent: 1, groupId: null, cardId });
             }
         } else {
             if (installments > 1) {

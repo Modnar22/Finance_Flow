@@ -1465,6 +1465,143 @@ body {
     transform: translateY(-1px);
 }
 
+/* ========== INSTALLMENTS PANEL ========== */
+.modal-installments {
+    max-width: 600px;
+}
+
+.installments-hint {
+    margin: 0 0 14px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+.inst-head,
+.inst-row {
+    display: grid;
+    grid-template-columns: 46px 1fr 66px 108px 78px;
+    gap: 8px;
+    align-items: center;
+}
+
+.inst-head {
+    padding: 0 4px 8px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+}
+
+.installments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 52vh;
+    overflow-y: auto;
+    padding-top: 8px;
+}
+
+.inst-row {
+    padding: 7px 4px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-3);
+    border: 1px solid transparent;
+    transition: border-color 0.2s var(--ease);
+}
+
+.inst-row.is-paid {
+    border-color: color-mix(in srgb, var(--success) 35%, transparent);
+}
+
+.inst-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-full);
+    background: var(--surface-4);
+    color: var(--text-2);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.inst-row.is-paid .inst-num {
+    background: var(--success);
+    color: white;
+}
+
+.inst-row .form-input {
+    padding: 7px 9px;
+    font-size: 0.8rem;
+}
+
+.inst-month {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.inst-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 5px 6px;
+    border-radius: var(--radius-full);
+    background: var(--surface-4);
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.inst-status.paid {
+    background: color-mix(in srgb, var(--success) 18%, transparent);
+    color: var(--success);
+}
+
+.installments-footer {
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.installments-total {
+    font-size: 0.8rem;
+    color: var(--text-2);
+}
+
+.installments-total strong {
+    color: var(--text-1);
+}
+
+.installments-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+/* Badge de parcela clicavel */
+.tx-badge-btn {
+    border: none;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+}
+
+.tx-badge-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
 .form-section {
     display: flex;
     flex-direction: column;

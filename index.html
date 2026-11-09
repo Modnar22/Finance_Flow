@@ -422,6 +422,38 @@
         </div>
     </div>
 
+    <!-- Installments Modal -->
+    <div class="modal-backdrop" id="installmentsOverlay">
+        <div class="modal modal-installments" id="installmentsModal">
+            <div class="modal-header">
+                <h3 id="installmentsTitle">Parcelas</h3>
+                <button class="btn-close" id="btnCloseInstallments">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body installments-body">
+                <p class="installments-hint" id="installmentsHint"></p>
+                <div class="inst-head">
+                    <span>Nº</span>
+                    <span>Data de pagamento</span>
+                    <span>Mês</span>
+                    <span>Valor (R$)</span>
+                    <span>Status</span>
+                </div>
+                <div class="installments-list" id="installmentsList"></div>
+            </div>
+            <div class="modal-footer installments-footer">
+                <span class="installments-total" id="installmentsTotal"></span>
+                <div class="installments-actions">
+                    <button type="button" class="btn btn-ghost" id="btnCancelInstallments">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveInstallments">
+                        <i class="fas fa-check"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Recurring Modal -->
     <div class="modal-backdrop" id="recurringModalOverlay">
         <div class="modal" id="recurringModal">
