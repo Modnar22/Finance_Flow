@@ -38,8 +38,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # --publish never: o electron-builder detecta "CI" e tenta publicar
+      # sozinho, o que exige GH_TOKEN no proprio build. A publicacao real
+      # e feita no passo "Publish to release" abaixo, via gh CLI.
       - name: Build installer
-        run: npm run build:win
+        run: npx electron-builder --win --publish never
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -101,7 +104,7 @@ jobs:
         run: npm ci
 
       - name: Build .deb
-        run: npx electron-builder --linux deb
+        run: npx electron-builder --linux deb --publish never
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
