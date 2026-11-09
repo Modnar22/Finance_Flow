@@ -118,6 +118,7 @@ const app = {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', e => {
+            if (this.confirmOpen) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
             if (e.key === 'n' || e.key === 'N') { e.preventDefault(); this.openModal(); }
             if (e.key === 'ArrowLeft') { e.preventDefault(); this.changeMonth(-1); }
@@ -496,6 +497,52 @@ const app = {
         document.getElementById('modalOverlay').classList.remove('active');
     },
 
+    // Dialogo de confirmacao generico (substitui o confirm() nativo).
+    // Retorna uma Promise que resolve com o value do botao clicado, ou null
+    // caso o usuario cancele (Esc / clique no backdrop).
+    confirmDialog({ title = 'Confirmar', message = '', buttons = [] }) {
+        return new Promise(resolve => {
+            const overlay = document.getElementById('confirmOverlay');
+            const titleEl = document.getElementById('confirmTitle');
+            const msgEl = document.getElementById('confirmMessage');
+            const actionsEl = document.getElementById('confirmActions');
+
+            const close = value => {
+                this.confirmOpen = false;
+                overlay.classList.remove('active');
+                document.removeEventListener('keydown', onKey, true);
+                resolve(value);
+            };
+
+            const onKey = e => {
+                if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    close(null);
+                }
+            };
+
+            titleEl.textContent = title;
+            msgEl.innerHTML = message;
+            actionsEl.innerHTML = '';
+
+            buttons.forEach(b => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `btn ${b.className || 'btn-ghost'}`;
+                btn.innerHTML = b.icon ? `<i class="fas ${b.icon}"></i> ${b.label}` : b.label;
+                btn.addEventListener('click', () => close(b.value));
+                actionsEl.appendChild(btn);
+            });
+
+            this.confirmOpen = true;
+            overlay.classList.add('active');
+            document.addEventListener('keydown', onKey, true);
+
+            overlay.onclick = e => { if (e.target === e.currentTarget) close(null); };
+        });
+    },
+
     updateInstallmentPreview() {
         const n = parseInt(document.getElementById('inputInstallments').value) || 1;
         const amt = parseFloat(document.getElementById('inputAmount').value) || 0;
@@ -573,23 +620,83 @@ const app = {
 
     editTransaction(id) { this.openModal(id); },
 
-    togglePaid(id) {
+    async togglePaid(id) {
         const tx = Storage.getTransactions().find(t => t.id === id);
         if (!tx) return;
 
+        // Parcelamento: oferece opcoes claras (inclusive DESMARCAR)
         if (tx.installments > 1 && tx.groupId) {
+            const group = Storage.getTransactions().filter(t => t.groupId === tx.groupId);
+            const paidCount = group.filter(t => t.paid).length;
+            const remaining = group.length - paidCount;
+
             if (tx.paid) {
-                if (confirm('Marcar TODAS as parcelas restantes como pagas?')) {
+                const buttons = [
+                    { label: 'Desmarcar esta parcela', value: 'one', icon: 'fa-rotate-left', className: 'btn-ghost' }
+                ];
+                if (remaining > 0) {
+                    buttons.push({
+                        label: `Marcar todas as restantes (${remaining})`,
+                        value: 'all', icon: 'fa-circle-check', className: 'btn-success'
+                    });
+                }
+                if (paidCount > 1) {
+                    buttons.push({
+                        label: `Desmarcar todas (${paidCount})`,
+                        value: 'none', icon: 'fa-ban', className: 'btn-ghost'
+                    });
+                }
+                buttons.push({ label: 'Cancelar', value: null, className: 'btn-ghost' });
+
+                const choice = await this.confirmDialog({
+                    title: 'Parcela paga',
+                    message: `Esta parcela (<strong>${tx.installmentCurrent}/${tx.installments}</strong>) está marcada como <strong>paga</strong>. O que deseja fazer?`,
+                    buttons
+                });
+
+                if (choice === 'one') {
+                    Storage.togglePaid(id);
+                    Utils.toast('Parcela desmarcada como paga', 'info');
+                } else if (choice === 'all') {
                     Storage.markGroupAsPaid(tx.groupId, true);
                     Utils.toast('Todas as parcelas marcadas como pagas', 'success');
+                } else if (choice === 'none') {
+                    Storage.markGroupAsPaid(tx.groupId, false);
+                    Utils.toast('Todas as parcelas desmarcadas', 'info');
+                } else {
+                    return; // cancelado
                 }
             } else {
-                Storage.togglePaid(id);
-                Utils.toast('Parcela marcada como paga', 'success');
+                if (remaining > 1) {
+                    const choice = await this.confirmDialog({
+                        title: 'Marcar parcela como paga',
+                        message: `Esta é a parcela <strong>${tx.installmentCurrent}/${tx.installments}</strong>. Marcar também as <strong>${remaining - 1}</strong> parcelas restantes?`,
+                        buttons: [
+                            { label: 'Somente esta', value: 'one', className: 'btn-ghost' },
+                            { label: `Marcar todas (${remaining})`, value: 'all', icon: 'fa-circle-check', className: 'btn-success' },
+                            { label: 'Cancelar', value: null, className: 'btn-ghost' }
+                        ]
+                    });
+
+                    if (choice === 'one') {
+                        Storage.togglePaid(id);
+                        Utils.toast('Parcela marcada como paga', 'success');
+                    } else if (choice === 'all') {
+                        Storage.markGroupAsPaid(tx.groupId, true);
+                        Utils.toast('Todas as parcelas marcadas como pagas', 'success');
+                    } else {
+                        return;
+                    }
+                } else {
+                    Storage.togglePaid(id);
+                    Utils.toast('Parcela marcada como paga', 'success');
+                }
             }
         } else {
+            // Transacao unica: alterna direto
+            const wasPaid = tx.paid;
             Storage.togglePaid(id);
-            Utils.toast(tx.paid ? 'Desmarcado como pago' : 'Marcado como pago', 'info');
+            Utils.toast(wasPaid ? 'Desmarcado como pago' : 'Marcado como pago', 'info');
         }
         this.refreshAll();
     },
