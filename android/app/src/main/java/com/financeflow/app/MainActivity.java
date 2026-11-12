@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
@@ -95,7 +96,14 @@ public class MainActivity extends Activity {
         webView.getSettings().setAllowFileAccess(true);
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setLoadWithOverviewMode(true);
+
+        // Sem zoom e sem barra de rolagem horizontal: o conteudo precisa caber
+        // na tela e so pode ser deslizado para cima/para baixo.
         webView.getSettings().setSupportZoom(false);
+        webView.getSettings().setBuiltInZoomControls(false);
+        webView.getSettings().setDisplayZoomControls(false);
+        webView.setHorizontalScrollBarEnabled(false);
+        webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
 
         // Ponte usada pelo Utils.downloadFile para EXPORTAR o backup.
         webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");

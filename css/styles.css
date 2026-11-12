@@ -44,6 +44,9 @@
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Bloqueia qualquer rolagem horizontal da pagina (o conteudo deve caber na tela) */
+html { overflow-x: hidden; }
+
 body {
     font-family: var(--font);
     background: var(--surface-0);
@@ -1411,6 +1414,7 @@ body {
 .modal-body {
     padding: 24px 28px;
     overflow-y: auto;
+    overflow-x: hidden; /* rolagem apenas vertical dentro dos modais */
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -1501,6 +1505,7 @@ body {
     gap: 6px;
     max-height: 52vh;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-top: 8px;
 }
 
@@ -1537,6 +1542,7 @@ body {
 .inst-row .form-input {
     padding: 7px 9px;
     font-size: 0.8rem;
+    min-width: 0; /* permite o input encolher dentro do grid */
 }
 
 .inst-month {
@@ -1832,7 +1838,6 @@ textarea.form-input {
     .main { margin-left: 0; }
     .mobile-menu { display: flex !important; }
     .content { padding: 20px 16px; }
-    .topbar { padding: 12px 16px; }
     .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
     .stat-card { padding: 16px; }
     .stat-value { font-size: 1.3rem; }
@@ -1841,14 +1846,55 @@ textarea.form-input {
     .form-row-2 { grid-template-columns: 1fr; }
     .history-stats { grid-template-columns: 1fr 1fr; }
     .settings-layout { grid-template-columns: 1fr; }
-    .month-title { min-width: auto; font-size: 1.1rem; }
+    .topbar {
+        padding: 12px 16px;
+        flex-wrap: wrap;      /* em telas estreitas, os botoes vao para a 2a linha */
+        row-gap: 8px;
+    }
+    .topbar-left { gap: 10px; min-width: 0; flex: 1 1 auto; }
+    .month-nav { gap: 8px; min-width: 0; }
+    .topbar-right { gap: 8px; margin-left: auto; }
+    .month-title {
+        min-width: 0;
+        font-size: 1.05rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     .keyboard-hint { display: none; }
     .tx-totals { flex-wrap: wrap; }
+}
+
+@media (max-width: 560px) {
+    /* Linhas de parcelas: 5 colunas nao cabem -> 2 linhas
+       (Nº | Data de pagamento) / (Mês | Valor | Status) */
+    .inst-head,
+    .inst-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            "num date date"
+            "month amount status";
+        row-gap: 6px;
+        column-gap: 8px;
+    }
+    .inst-head span:nth-child(1) { text-align: center; }
+    .inst-head span:nth-child(4) { text-align: right; }
+    .inst-head span:nth-child(5) { justify-self: center; }
+    .inst-date,
+    .inst-amount { width: 100%; min-width: 0; }
+    .inst-month,
+    .inst-status { justify-self: center; }
 }
 
 @media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr; }
     .topbar-right .btn span { display: none; }
+    .topbar-right .btn { padding: 10px 14px; }
+    /* Modais com espaco interno maior nas laterais */
+    .modal-backdrop { padding: 12px; }
+    .modal-header { padding: 18px 16px; }
+    .modal-body { padding: 18px 16px; }
+    .modal-footer { padding: 12px 16px 18px; }
 }
 
 /* ========== LIGHT THEME ========== */
