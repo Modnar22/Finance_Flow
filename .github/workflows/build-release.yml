@@ -67,18 +67,25 @@ jobs:
             exit 0
           fi
 
-          # Remove instaladores antigos (nome fixo) para evitar duplicata.
+          # Remove instaladores antigos (qualquer variante de nome) para
+          # evitar duplicata no release.
           for existing in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
             case "$existing" in
-              FinanceFlow-Setup-*.exe)
+              FinanceFlow-Setup-*|FinanceFlow.Setup.*|FinanceFlow*Setup*.exe)
                 echo "Removendo asset antigo: $existing"
                 gh release delete-asset "$TAG" "$existing" --yes
                 ;;
             esac
           done
 
+          # O nome gerado pelo electron-builder varia (espacos vs pontos).
+          # Copia para o nome canonico usado no README antes de publicar.
+          src=$(ls dist/*.exe | head -n 1)
+          echo "Arquivo gerado: $src"
+          cp "$src" FinanceFlow-Setup-1.0.0.exe
+
           echo "Publicando instalador Windows em $TAG"
-          gh release upload "$TAG" "dist/FinanceFlow Setup 1.0.0.exe#FinanceFlow-Setup-1.0.0.exe" --clobber
+          gh release upload "$TAG" FinanceFlow-Setup-1.0.0.exe --clobber
           echo "Windows publicado com sucesso."
 
   linux:
