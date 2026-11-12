@@ -1,0 +1,12 @@
+# Build do Gradle / Android
+.gradle/
+build/
+local.properties
+.cxx/
+captures/
+*.iml
+
+# Keystore de debug gerado automaticamente
+*.keystore
+*.jks
+keystore.properties

@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Raiz do repositorio Git (os arquivos web ficam um nivel acima de android/).
+def webRoot = rootProject.projectDir.parentFile
+// Destino da copia dos arquivos web; fica dentro do build e NAO vai para o Git.
+def webAssetsDir = layout.buildDirectory.dir("webassets").get().asFile
+
+android {
+    namespace 'com.financeflow.app'
+    compileSdk 37
+
+    // Unica versao de build-tools instalada nesta maquina.
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'com.financeflow.app'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += [webAssetsDir]
+        }
+    }
+}
+
+dependencies {
+    // WebViewAssetLoader: serve os arquivos web com a origem
+    // https://appassets.androidplatform.net/ (mesma origem do APK antigo,
+    // preservando o comportamento do localStorage).
+    implementation 'androidx.webkit:webkit:1.18.0'
+}
+
+// Copia os arquivos web atuais (index.html, css, js, assets) para o APK a
+// cada build - assim o APK sempre reflete a versao corrigida do app.
+// As pastas css/ e js/ precisam manter a estrutura, pois o index.html
+// referencia "css/styles.css" e "js/app.js".
+// Sync (e nao Copy) remove arquivos que deixaram de existir no repo.
+tasks.register('syncWebAssets', Sync) {
+    from "${webRoot}/index.html"
+    from("${webRoot}/css") { into 'css' }
+    from("${webRoot}/js") { into 'js' }
+    // assets/ so e usado pelo Electron (main.js); a versao web nao referencia.
+    into webAssetsDir
+}
+
+tasks.named('preBuild').configure { dependsOn 'syncWebAssets' }

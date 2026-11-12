@@ -1,0 +1,6 @@
+// Build do APK Android do FinanceFlow.
+// O app e um WebView que embute os mesmos arquivos web (index.html, css, js)
+// usados na versao desktop (Electron).
+plugins {
+    id 'com.android.application' version '9.5.1' apply false
+}
