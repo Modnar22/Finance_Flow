@@ -52,6 +52,12 @@ const Utils = {
     },
 
     downloadFile(content, filename, type) {
+        // No Android (WebView) o clique em <a download> nao faz nada.
+        // Envia direto para a Activity, que grava o arquivo em Download/.
+        if (window.AndroidBridge && typeof window.AndroidBridge.saveFile === 'function') {
+            window.AndroidBridge.saveFile(filename, content, type || 'application/json');
+            return;
+        }
         const blob = new Blob([content], { type });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
