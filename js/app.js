@@ -22,6 +22,7 @@ const app = {
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', e => {
                 e.preventDefault();
+                document.getElementById('sidebar').classList.remove('open'); // fecha o menu mobile
                 document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
                 const section = link.dataset.section;
@@ -117,8 +118,20 @@ const app = {
         });
 
         // Mobile menu
-        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('open');
+        const sidebarEl = document.getElementById('sidebar');
+        document.getElementById('mobileMenuBtn').addEventListener('click', e => {
+            e.stopPropagation();
+            sidebarEl.classList.toggle('open');
+        });
+
+        // Fecha o menu lateral ao clicar fora dele (conteudo principal).
+        // So faz sentido com o menu aberto e no layout mobile; nas demais
+        // larguras a classe .open nao tem efeito visual.
+        document.addEventListener('click', e => {
+            if (!sidebarEl.classList.contains('open')) return;
+            if (sidebarEl.contains(e.target)) return;
+            if (e.target.closest && e.target.closest('#mobileMenuBtn')) return;
+            sidebarEl.classList.remove('open');
         });
 
         // Theme toggle
@@ -174,6 +187,7 @@ const app = {
     },
 
     navigateTo(section) {
+        document.getElementById('sidebar').classList.remove('open'); // fecha o menu mobile
         document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.section === section));
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('section-' + section).classList.add('active');
