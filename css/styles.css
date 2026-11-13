@@ -1889,23 +1889,33 @@ textarea.form-input {
 
 @media (max-width: 560px) {
     /* Linhas de parcelas: 5 colunas nao cabem -> 2 linhas
-       (Nº | Data de pagamento) / (Mês | Valor | Status) */
+       (Nº | Data de pagamento | Mês) / (Valor R$ ......... | Status)
+       Os itens PRECISAM ser nomeados nas areas: sem isso o auto-placement
+       jogava o input de valor para a coluna "auto" (ficava com a largura
+       intrinseca do numero) e esmagava a coluna da data, e o status caia
+       por cima do valor. */
     .inst-head,
     .inst-row {
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: 30px minmax(0, 1fr) 84px; /* coluna fixa: "Pendente" (74px) cabe e todas as linhas alinham */
         grid-template-areas:
-            "num date date"
-            "month amount status";
+            "num date month"
+            "amount amount status";
         row-gap: 6px;
         column-gap: 8px;
     }
-    .inst-head span:nth-child(1) { text-align: center; }
-    .inst-head span:nth-child(4) { text-align: right; }
-    .inst-head span:nth-child(5) { justify-self: center; }
+    .inst-head span:nth-child(1) { grid-area: num; text-align: center; }
+    .inst-head span:nth-child(2) { grid-area: date; }
+    .inst-head span:nth-child(3) { grid-area: month; text-align: center; }
+    .inst-head span:nth-child(4) { grid-area: amount; }
+    .inst-head span:nth-child(5) { grid-area: status; text-align: center; }
+    .inst-num    { grid-area: num; }
+    .inst-date   { grid-area: date; }
+    .inst-month  { grid-area: month; text-align: center; }
+    .inst-amount { grid-area: amount; }
+    .inst-status { grid-area: status; }
+    .inst-head { font-size: 0.6rem; } /* rotulo "Data de pagamento" cabe numa linha */
     .inst-date,
     .inst-amount { width: 100%; min-width: 0; }
-    .inst-month,
-    .inst-status { justify-self: center; }
 
     /* Linha de transacao em 2 blocos: descricao em cima,
        valor/pagar/acoes embaixo (valor a esquerda, acoes a direita) */
