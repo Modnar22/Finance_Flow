@@ -6,7 +6,8 @@ const Storage = {
         CARDS: 'fc_cards',
         CREDIT_LIMIT: 'fc_credit_limit',
         RECURRING: 'fc_recurring',
-        RECURRING_GENERATED: 'fc_recurring_generated'
+        RECURRING_GENERATED: 'fc_recurring_generated',
+        SEQ: 'fc_seq'
     },
 
     defaultCategories: [
@@ -37,6 +38,34 @@ const Storage = {
         if (!localStorage.getItem(this.KEYS.RECURRING_GENERATED))
             localStorage.setItem(this.KEYS.RECURRING_GENERATED, JSON.stringify([]));
         this.migrateCreditLimit();
+        this.migrateTransactions();
+    },
+
+    // Compatibilidade com dados antigos: atribui a ordem de insercao (seq)
+    // e o timestamp de criacao aos lancamentos que ainda nao possuem.
+    // createdAt = 0 marca lancamento anterior a atualizacao, que nao recebe
+    // o selo "NOVO".
+    migrateTransactions() {
+        const all = this.getTransactions();
+        let changed = false;
+        let maxSeq = all.reduce((m, t) => Math.max(m, Number(t.seq) || 0), 0);
+
+        all.forEach(t => {
+            if (t.seq === undefined || t.seq === null) { t.seq = ++maxSeq; changed = true; }
+            if (t.createdAt === undefined || t.createdAt === null) { t.createdAt = 0; changed = true; }
+        });
+
+        if (changed) this.saveTransactions(all);
+
+        const stored = parseInt(localStorage.getItem(this.KEYS.SEQ) || '0', 10);
+        if (stored < maxSeq) localStorage.setItem(this.KEYS.SEQ, String(maxSeq));
+    },
+
+    // Proximo numero de sequencia (ordem em que os lancamentos foram criados).
+    nextSeq() {
+        const n = parseInt(localStorage.getItem(this.KEYS.SEQ) || '0', 10) + 1;
+        localStorage.setItem(this.KEYS.SEQ, String(n));
+        return n;
     },
 
     migrateCreditLimit() {
@@ -108,6 +137,10 @@ const Storage = {
     addTransaction(transaction) {
         const all = this.getTransactions();
         transaction.id = 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        transaction.seq = this.nextSeq();
+        if (transaction.createdAt === undefined || transaction.createdAt === null) {
+            transaction.createdAt = Date.now();
+        }
         all.push(transaction);
         this.saveTransactions(all);
         return transaction;
@@ -126,7 +159,9 @@ const Storage = {
 
     getTransactionsByMonth(year, month) {
         return this.getTransactions().filter(t => {
-            const d = new Date(t.date);
+            // T00:00:00 evita que a data seja interpretada como UTC e o
+            // lancamento do dia 1 caia no mes anterior.
+            const d = new Date(t.date + 'T00:00:00');
             return d.getFullYear() === year && d.getMonth() === month;
         });
     },
@@ -218,6 +253,7 @@ const Storage = {
         if (data.cards) localStorage.setItem(this.KEYS.CARDS, JSON.stringify(data.cards));
         if (data.recurring) localStorage.setItem(this.KEYS.RECURRING, JSON.stringify(data.recurring));
         if (data.recurringGenerated) localStorage.setItem(this.KEYS.RECURRING_GENERATED, JSON.stringify(data.recurringGenerated));
+        this.migrateTransactions();
     },
 
     // Recurring
@@ -255,7 +291,7 @@ const Storage = {
             if (txForRecurring.length > 1) {
                 const byMonth = {};
                 txForRecurring.forEach(t => {
-                    const d = new Date(t.date);
+                    const d = new Date(t.date + 'T00:00:00');
                     const key = `${d.getFullYear()}-${d.getMonth()}`;
                     if (!byMonth[key]) byMonth[key] = [];
                     byMonth[key].push(t);

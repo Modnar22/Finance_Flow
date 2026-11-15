@@ -8,7 +8,7 @@ name: Build Release Assets
 #
 # Uso:
 #   - Dispare manualmente na aba Actions (workflow_dispatch)
-#   - Ou envie uma tag: git tag v1.0.0_Windows && git push origin --tags
+#   - Ou envie uma tag: git tag v1.1.0_Windows && git push origin --tags
 #
 # Cada job publica sempre no SEU proprio release. O status de pre-release
 # dos releases NUNCA e alterado por este workflow.
@@ -25,6 +25,8 @@ jobs:
   windows:
     name: Windows (NSIS installer)
     runs-on: windows-latest
+    # Roda apenas para a tag de Windows (vX.Y.Z_Windows) ou build manual.
+    if: github.event_name == 'workflow_dispatch' || endsWith(github.ref_name, '_Windows')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,7 +59,7 @@ jobs:
       - name: Publish to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v1.0.0_Windows
+          TAG: v1.1.0_Windows
         shell: bash
         run: |
           set -euo pipefail
@@ -82,15 +84,18 @@ jobs:
           # Copia para o nome canonico usado no README antes de publicar.
           src=$(ls dist/*.exe | head -n 1)
           echo "Arquivo gerado: $src"
-          cp "$src" FinanceFlow-Setup-1.0.0.exe
+          cp "$src" FinanceFlow-Setup-1.1.0.exe
 
           echo "Publicando instalador Windows em $TAG"
-          gh release upload "$TAG" FinanceFlow-Setup-1.0.0.exe --clobber
+          gh release upload "$TAG" FinanceFlow-Setup-1.1.0.exe --clobber
           echo "Windows publicado com sucesso."
 
   linux:
     name: Linux (.deb)
     runs-on: ubuntu-latest
+    # Roda apenas para a tag simples (vX.Y.Z) ou build manual - nunca para
+    # v1.1.0_Windows / v1.1.0_APK.
+    if: github.event_name == 'workflow_dispatch' || (!contains(github.ref_name, '_'))
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -124,7 +129,7 @@ jobs:
       - name: Publish to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v1.0.0
+          TAG: v1.1.0
         shell: bash
         run: |
           set -euo pipefail

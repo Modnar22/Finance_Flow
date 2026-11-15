@@ -365,7 +365,11 @@
                 </div>
                 <div class="form-section">
                     <label class="form-label" for="inputDescription">Descrição</label>
-                    <input type="text" id="inputDescription" class="form-input" required placeholder="Ex: Supermercado">
+                    <input type="text" id="inputDescription" class="form-input" required
+                        placeholder="Ex: Supermercado" list="descriptionSuggestions"
+                        autocomplete="off" spellcheck="false">
+                    <div class="field-hint" id="descHint"></div>
+                    <datalist id="descriptionSuggestions"></datalist>
                 </div>
                 <div class="form-section">
                     <label class="form-label" for="inputAmount">Valor (R$)</label>
@@ -477,7 +481,10 @@
                 </div>
                 <div class="form-section">
                     <label class="form-label" for="inputRecDescription">Descrição</label>
-                    <input type="text" id="inputRecDescription" class="form-input" required placeholder="Ex: Aluguel">
+                    <input type="text" id="inputRecDescription" class="form-input" required
+                        placeholder="Ex: Aluguel" list="descriptionSuggestions"
+                        autocomplete="off" spellcheck="false">
+                    <div class="field-hint" id="recDescHint"></div>
                 </div>
                 <div class="form-section">
                     <label class="form-label" for="inputRecAmount">Valor (R$)</label>

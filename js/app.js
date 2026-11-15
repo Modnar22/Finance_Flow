@@ -42,11 +42,10 @@ const app = {
 
         // Modal
         document.getElementById('btnAddTransaction').addEventListener('click', () => this.openModal());
+        // Modal: o clique fora da janela NAO fecha o formulario (evita perder
+        // o que ja foi digitado). Fechamento só pelos botões Cancelar/Fechar/Esc.
         document.getElementById('btnCloseModal').addEventListener('click', () => this.closeModal());
         document.getElementById('btnCancelModal').addEventListener('click', () => this.closeModal());
-        document.getElementById('modalOverlay').addEventListener('click', e => {
-            if (e.target === e.currentTarget) this.closeModal();
-        });
 
         // Type switcher
         document.querySelectorAll('.type-opt').forEach(btn => {
@@ -62,6 +61,21 @@ const app = {
         document.getElementById('transactionForm').addEventListener('submit', e => {
             e.preventDefault();
             this.saveTransaction();
+        });
+
+        // Sugestao de descricao (autocompletar) e categoria aprendida
+        document.getElementById('inputDescription').addEventListener('input', () => {
+            this.onDescriptionInput();
+        });
+        document.getElementById('inputCategory').addEventListener('change', () => {
+            // usuario escolheu a categoria na mao: para de sobrescrever
+            this.categoryTouched = true;
+        });
+        document.getElementById('inputRecDescription').addEventListener('input', () => {
+            this.onRecDescriptionInput();
+        });
+        document.getElementById('inputRecCategory').addEventListener('change', () => {
+            this.recCategoryTouched = true;
         });
 
         // Installment preview & card selector
@@ -100,9 +114,7 @@ const app = {
         document.getElementById('btnAddRecurring').addEventListener('click', () => this.openRecurringModal());
         document.getElementById('btnCloseRecurringModal').addEventListener('click', () => this.closeRecurringModal());
         document.getElementById('btnCancelRecurringModal').addEventListener('click', () => this.closeRecurringModal());
-        document.getElementById('recurringModalOverlay').addEventListener('click', e => {
-            if (e.target === e.currentTarget) this.closeRecurringModal();
-        });
+        // Clique fora nao fecha: o mesmo cuidado do modal de lancamentos.
         document.getElementById('recurringForm').addEventListener('submit', e => {
             e.preventDefault();
             this.saveRecurring();
@@ -223,7 +235,7 @@ const app = {
         let maxKey = currentYear * 100 + currentMonth;
 
         transactions.forEach(t => {
-            const d = new Date(t.date);
+            const d = new Date(t.date + 'T00:00:00');
             const key = d.getFullYear() * 100 + d.getMonth();
             if (key < minKey) minKey = key;
             if (key > maxKey) maxKey = key;
@@ -280,7 +292,7 @@ const app = {
         // Render individual cards
         this.renderCardsDashboard();
 
-        const sorted = [...tx].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sorted = Utils.sortByInsertion(tx);
         this.renderTxList('recentList', sorted);
     },
 
@@ -306,7 +318,7 @@ const app = {
                             <div class="credit-card-header">
                                 <div class="credit-card-name">
                                     <span class="credit-card-dot" style="background:${card.color}"></span>
-                                    ${Utils.escapeHtml(card.name)}
+                                    ${Utils.escapeHtml(Utils.formatCardName(card.name))}
                                 </div>
                             </div>
                             <div class="credit-card-value" style="color:${card.color}">${Utils.formatCurrency(available)}</div>
@@ -354,7 +366,7 @@ const app = {
                 <span class="value">${Utils.formatCurrency(summary.expense)}</span>
             </div>`;
 
-        tx.sort((a, b) => new Date(b.date) - new Date(a.date));
+        tx = Utils.sortByInsertion(tx);
         this.renderTxList('transactionList', tx);
     },
 
@@ -388,11 +400,16 @@ const app = {
                 badge = `<span class="tx-badge">${t.installmentCurrent}/${t.installments}</span>`;
             }
 
+            // Selo de lancamento recem-adicionado (ultimas 48h)
+            const newBadge = Utils.isNewTransaction(t)
+                ? `<span class="tx-badge tx-new" title="Adicionado nas últimas 48 horas"><i class="fas fa-bolt"></i> NOVO</span>`
+                : '';
+
             let cardBadge = '';
             if (t.cardId) {
                 const card = cards.find(c => c.id === t.cardId);
                 if (card) {
-                    cardBadge = `<span class="tx-badge" style="background:${card.color}20;color:${card.color}"><i class="fas fa-credit-card" style="font-size:0.6rem"></i> ${Utils.escapeHtml(card.name)}</span>`;
+                    cardBadge = `<span class="tx-badge" style="background:${card.color}20;color:${card.color}"><i class="fas fa-credit-card" style="font-size:0.6rem"></i> ${Utils.escapeHtml(Utils.formatCardName(card.name))}</span>`;
                 }
             }
 
@@ -414,7 +431,7 @@ const app = {
                 <div class="tx-item ${paidClass}">
                     <div class="tx-icon ${t.type}"><i class="fas fa-${icon}"></i></div>
                     <div class="tx-info">
-                        <div class="tx-desc">${Utils.escapeHtml(t.description)}${badge}${cardBadge}</div>
+                        <div class="tx-desc">${Utils.escapeHtml(t.description)}${newBadge}${badge}${cardBadge}</div>
                         <div class="tx-meta">
                             <span class="tx-cat-dot" style="background:${catColor}"></span>
                             ${catName} · ${Utils.formatDate(t.date)}${t.note ? ' · ' + Utils.escapeHtml(t.note) : ''}
@@ -433,6 +450,129 @@ const app = {
         }).join('');
     },
 
+    // ========== SUGESTOES E CATEGORIA APRENDIDA ==========
+    // Minimo de lancamentos com o mesmo nome para comecar a sugerir a categoria.
+    LEARN_MIN_OCCURRENCES: 3,
+
+    // Indice dos nomes ja usados, montado a partir das transacoes e das
+    // recorrentes (nao cria nova chave de armazenamento).
+    getDescriptionIndex() {
+        if (this._descIndex) return this._descIndex;
+
+        const map = new Map();
+        const add = (desc, categoryId) => {
+            const key = Utils.normalizeDescription(desc);
+            if (!key) return;
+            let item = map.get(key);
+            if (!item) {
+                item = {
+                    key,
+                    name: String(desc).replace(/\s*\(\d+\/\d+\)\s*$/, '').trim(),
+                    count: 0,
+                    cats: {}
+                };
+                map.set(key, item);
+            }
+            item.count++;
+            if (categoryId) item.cats[categoryId] = (item.cats[categoryId] || 0) + 1;
+        };
+
+        Storage.getTransactions().forEach(t => add(t.description, t.categoryId));
+        Storage.getRecurring().forEach(r => add(r.description, r.categoryId));
+
+        const list = [...map.values()];
+        list.forEach(item => {
+            let best = null, bestCount = 0, second = 0;
+            Object.entries(item.cats).forEach(([catId, n]) => {
+                if (n > bestCount) { second = bestCount; bestCount = n; best = catId; }
+                else if (n > second) second = n;
+            });
+            // so "aprende" quando existe uma categoria claramente majoritaria
+            item.categoryId = bestCount > second ? best : null;
+            item.categoryCount = bestCount;
+        });
+
+        list.sort((a, b) => b.count - a.count);
+        this._descIndex = list;
+        return list;
+    },
+
+    invalidateDescriptionIndex() { this._descIndex = null; },
+
+    // Categoria aprendida para um nome, ou null se ainda nao ha padrao.
+    getLearnedCategory(desc) {
+        const key = Utils.normalizeDescription(desc);
+        if (!key) return null;
+        const item = this.getDescriptionIndex().find(i => i.key === key);
+        if (!item || !item.categoryId) return null;
+        if (item.categoryCount < this.LEARN_MIN_OCCURRENCES) return null;
+        return { categoryId: item.categoryId, count: item.categoryCount };
+    },
+
+    // Preenche o <datalist> com os nomes mais usados (filtrados pelo digitado).
+    updateDescriptionSuggestions(filter) {
+        const list = document.getElementById('descriptionSuggestions');
+        if (!list) return;
+        const f = Utils.normalizeDescription(filter);
+        const matches = this.getDescriptionIndex()
+            .filter(item => !f || item.key.includes(f))
+            .slice(0, 12);
+
+        list.innerHTML = matches.map(item => {
+            const cat = Storage.getCategoryById(item.categoryId);
+            const label = [cat ? cat.name : '', `${item.count} uso${item.count > 1 ? 's' : ''}`]
+                .filter(Boolean).join(' · ');
+            const value = Utils.escapeHtml(item.name).replace(/"/g, '&quot;');
+            return `<option value="${value}">${Utils.escapeHtml(label)}</option>`;
+        }).join('');
+    },
+
+    // Aplica a categoria aprendida ao digitar/nome escolhido e mostra a dica.
+    applyLearnedCategory(desc, { selectId, hintId, touchedKey }) {
+        const hint = document.getElementById(hintId);
+        const learned = this.getLearnedCategory(desc);
+
+        if (!learned) {
+            if (hint) { hint.classList.remove('visible'); hint.innerHTML = ''; }
+            return;
+        }
+
+        const cat = Storage.getCategoryById(learned.categoryId);
+        if (!cat) return;
+
+        const alreadyTouched = !!this[touchedKey];
+        if (!alreadyTouched) {
+            document.getElementById(selectId).value = learned.categoryId;
+        }
+
+        if (hint) {
+            const verb = alreadyTouched ? 'Categoria sugerida' : 'Categoria aprendida';
+            hint.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> ${verb}: <strong>${Utils.escapeHtml(cat.name)}</strong>
+                <span>(${learned.count} lançamentos com este nome)</span>`;
+            hint.classList.add('visible');
+        }
+    },
+
+    onDescriptionInput() {
+        const value = document.getElementById('inputDescription').value;
+        this.updateDescriptionSuggestions(value);
+        this.applyLearnedCategory(value, {
+            selectId: 'inputCategory',
+            hintId: 'descHint',
+            touchedKey: 'categoryTouched'
+        });
+    },
+
+    onRecDescriptionInput() {
+        const value = document.getElementById('inputRecDescription').value;
+        this.updateDescriptionSuggestions(value);
+        this.applyLearnedCategory(value, {
+            selectId: 'inputRecCategory',
+            hintId: 'recDescHint',
+            touchedKey: 'recCategoryTouched'
+        });
+    },
+
     // ========== MODAL ==========
     populateCategorySelects() {
         const cats = Storage.getCategories();
@@ -443,7 +583,7 @@ const app = {
     populateCardSelect() {
         const cards = Storage.getCards();
         document.getElementById('inputCard').innerHTML = '<option value="">Nenhum cartão</option>' +
-            cards.map(c => `<option value="${c.id}">${c.name} (Limite: ${Utils.formatCurrency(c.limit)})</option>`).join('');
+            cards.map(c => `<option value="${c.id}">${Utils.formatCardName(c.name)} (Limite: ${Utils.formatCurrency(c.limit)})</option>`).join('');
     },
 
     updateCardSelectorVisibility() {
@@ -479,7 +619,7 @@ const app = {
 
         infoEl.classList.add('visible');
         infoEl.innerHTML = `
-            <strong>${Utils.escapeHtml(card.name)}</strong><br>
+            <strong>${Utils.escapeHtml(Utils.formatCardName(card.name))}</strong><br>
             Disponível: ${Utils.formatCurrency(available)}<br>
             Parcela mensal: ${Utils.formatCurrency(installmentValue)}<br>
             ${installmentValue > available ? '<span style="color:var(--danger)">Atenção: parcela excede o limite disponível!</span>' : '<span style="color:var(--success)">Dentro do limite</span>'}
@@ -491,6 +631,8 @@ const app = {
         document.getElementById('modalTitle').textContent = editId ? 'Editar Transação' : 'Nova Transação';
         document.getElementById('editTransactionId').value = '';
         document.getElementById('transactionForm').reset();
+        this.categoryTouched = false;
+        this.invalidateDescriptionIndex();
         document.getElementById('inputDate').value = Utils.getTodayString();
         document.getElementById('inputInstallments').value = 1;
         document.getElementById('inputCard').value = '';
@@ -532,8 +674,19 @@ const app = {
                 this.updateInstallmentPreview();
                 this.updateCardSelectorVisibility();
                 this.updateCardLimitInfo();
+                // a categoria ja salva nao deve ser sobrescrita pela aprendida
+                this.categoryTouched = true;
             }
         }
+
+        // Sugestoes de nome e dica de categoria aprendida
+        const currentDesc = document.getElementById('inputDescription').value;
+        this.updateDescriptionSuggestions(currentDesc);
+        this.applyLearnedCategory(currentDesc, {
+            selectId: 'inputCategory',
+            hintId: 'descHint',
+            touchedKey: 'categoryTouched'
+        });
     },
 
     closeModal() {
@@ -763,6 +916,7 @@ const app = {
             }
         }
 
+        this.invalidateDescriptionIndex();
         this.closeModal();
         this.refreshAll();
         this.populateCategorySelects();
@@ -889,7 +1043,7 @@ const app = {
 
     // ========== CARDS ==========
     addCard() {
-        const name = document.getElementById('inputCardName').value.trim();
+        const name = Utils.formatCardName(document.getElementById('inputCardName').value);
         const limit = parseFloat(document.getElementById('inputCardLimit').value) || 0;
         const color = document.getElementById('inputCardColor').value;
 
@@ -909,13 +1063,13 @@ const app = {
         const card = Storage.getCardById(id);
         if (!card) return;
 
-        const newName = prompt('Nome do cartão:', card.name);
+        const newName = prompt('Nome do cartão:', Utils.formatCardName(card.name));
         if (newName === null) return;
 
         const newLimit = prompt('Limite do cartão:', card.limit);
         if (newLimit === null) return;
 
-        Storage.updateCard(id, { name: newName, limit: parseFloat(newLimit) || 0 });
+        Storage.updateCard(id, { name: Utils.formatCardName(newName), limit: parseFloat(newLimit) || 0 });
         this.populateCardSelect();
         this.renderSettings();
         this.renderDashboard();
@@ -927,7 +1081,7 @@ const app = {
         const card = Storage.getCardById(id);
         if (!card) return;
 
-        if (confirm(`Remover cartão "${card.name}"?\n\nAs transações associadas não serão excluídas, mas ficarão sem cartão.`)) {
+        if (confirm(`Remover cartão "${Utils.formatCardName(card.name)}"?\n\nAs transações associadas não serão excluídas, mas ficarão sem cartão.`)) {
             Storage.removeCard(id);
             this.populateCardSelect();
             this.renderSettings();
@@ -959,7 +1113,7 @@ const app = {
                     <div class="card-item">
                         <div class="card-item-color" style="background:${card.color}"></div>
                         <div class="card-item-info">
-                            <div class="card-item-name">${Utils.escapeHtml(card.name)}</div>
+                            <div class="card-item-name">${Utils.escapeHtml(Utils.formatCardName(card.name))}</div>
                             <div class="card-item-limit">
                                 Limite: <strong>${Utils.formatCurrency(card.limit)}</strong> · 
                                 Disponível: <strong>${Utils.formatCurrency(available)}</strong> · 
@@ -1115,6 +1269,8 @@ const app = {
         document.getElementById('editRecurringId').value = '';
         document.getElementById('recurringForm').reset();
         document.getElementById('inputRecDay').value = 1;
+        this.recCategoryTouched = false;
+        this.invalidateDescriptionIndex();
 
         document.querySelectorAll('.type-opt[data-form="recurring"]').forEach(b => b.classList.remove('active'));
         document.querySelector('.type-opt[data-form="recurring"][data-type="expense"]').classList.add('active');
@@ -1135,8 +1291,17 @@ const app = {
                 const btn = document.querySelector(`.type-opt[data-form="recurring"][data-type="${r.type}"]`);
                 if (btn) btn.classList.add('active');
                 this.selectedRecurringType = r.type;
+                this.recCategoryTouched = true; // ja tem categoria salva
             }
         }
+
+        const currentRecDesc = document.getElementById('inputRecDescription').value;
+        this.updateDescriptionSuggestions(currentRecDesc);
+        this.applyLearnedCategory(currentRecDesc, {
+            selectId: 'inputRecCategory',
+            hintId: 'recDescHint',
+            touchedKey: 'recCategoryTouched'
+        });
     },
 
     closeRecurringModal() {
@@ -1159,6 +1324,7 @@ const app = {
             Utils.toast('Recorrência criada!', 'success');
         }
 
+        this.invalidateDescriptionIndex();
         this.closeRecurringModal();
         this.renderRecurring();
     },
@@ -1188,7 +1354,7 @@ const app = {
     // ========== HISTORY ==========
     renderHistory(month) {
         if (month === undefined) month = this.currentMonth;
-        const tx = Storage.getTransactionsByMonth(this.currentYear, month);
+        let tx = Storage.getTransactionsByMonth(this.currentYear, month);
         const summary = Utils.calculateSummary(tx);
 
         document.getElementById('historySummary').innerHTML = `
@@ -1209,7 +1375,7 @@ const app = {
                 <span class="history-stat-value">${tx.length}</span>
             </div>`;
 
-        tx.sort((a, b) => new Date(b.date) - new Date(a.date));
+        tx = Utils.sortByInsertion(tx);
         this.renderTxList('historyList', tx);
     },
 

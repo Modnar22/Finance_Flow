@@ -21,8 +21,9 @@
     </filter>
   </defs>
   
-  <!-- Background rounded square -->
-  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bgGrad)" filter="url(#shadow)"/>
+  <!-- Background rounded square (sem drop-shadow: nas versoes PNG/ICO o sombreado
+       aparecia como uma mancha escura nas laterais sobre o fundo transparente) -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bgGrad)"/>
   
   <!-- Shine overlay -->
   <rect x="16" y="16" width="480" height="240" rx="96" ry="96" fill="url(#shineGrad)"/>

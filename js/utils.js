@@ -34,7 +34,7 @@ const Utils = {
     getMonthlyTotals(year) {
         const tx = Storage.getTransactions();
         return Array.from({ length: 12 }, (_, m) => {
-            const monthTx = tx.filter(t => { const d = new Date(t.date); return d.getFullYear() === year && d.getMonth() === m; });
+            const monthTx = tx.filter(t => { const d = new Date(t.date + 'T00:00:00'); return d.getFullYear() === year && d.getMonth() === m; });
             let income = 0, expense = 0;
             monthTx.forEach(t => { if (t.type === 'income') income += t.amount; else expense += t.amount; });
             return { month: m, income, expense, balance: income - expense };
@@ -70,6 +70,45 @@ const Utils = {
         const d = document.createElement('div');
         d.textContent = str;
         return d.innerHTML;
+    },
+
+    // Janela do marcador "novo" nos lancamentos recem-criados (48h).
+    NEW_TX_WINDOW_MS: 48 * 60 * 60 * 1000,
+
+    // "💳Itaú" -> "💳 Itaú": garante espaco entre um emoji/simbolo inicial
+    // e o resto do nome do cartao (nomes salvos sem o espaco continuam iguais
+    // nos demais pontos, apenas ganham o espaco na exibicao).
+    formatCardName(name) {
+        const s = String(name || '').trim();
+        if (!s) return s;
+        const m = s.match(/^([^\p{L}\p{N}\s]+)\s*(.*)$/u);
+        if (!m) return s;
+        return m[2] ? `${m[1]} ${m[2].trim()}` : m[1];
+    },
+
+    // Ordena pela ordem em que os lancamentos foram inseridos
+    // (o mais recente fica no topo das listas).
+    sortByInsertion(list) {
+        return [...list].sort((a, b) =>
+            (b.seq || 0) - (a.seq || 0) || (b.createdAt || 0) - (a.createdAt || 0)
+        );
+    },
+
+    // true se o lancamento foi criado dentro da janela do selo "NOVO".
+    isNewTransaction(tx) {
+        if (!tx || !tx.createdAt) return false;
+        return (Date.now() - tx.createdAt) < Utils.NEW_TX_WINDOW_MS;
+    },
+
+    // "Cartão de Passagem (3/6)" -> "cartao de passagem"
+    // Acentos sao ignorados para o nome casar mesmo sem digitado.
+    normalizeDescription(desc) {
+        return String(desc || '')
+            .replace(/\s*\(\d+\/\d+\)\s*$/, '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
     },
 
     toast(message, type = 'info') {

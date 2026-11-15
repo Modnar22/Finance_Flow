@@ -1,6 +1,6 @@
 {
   "name": "financeflow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Dashboard financeiro pessoal com interface moderna. Gerencie receitas, despesas, orçamento, cartões de crédito e transações recorrentes.",
   "main": "main.js",
   "author": {

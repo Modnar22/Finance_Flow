@@ -718,6 +718,8 @@ body {
 
 .tx-badge {
     display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 2px 8px;
     border-radius: var(--radius-full);
     font-size: 0.65rem;
@@ -725,6 +727,34 @@ body {
     background: var(--primary-subtle);
     color: var(--primary);
 }
+
+/* Selo de lancamento recem-adicionado (ultimas 48h) */
+.tx-badge.tx-new {
+    background: var(--success-subtle);
+    color: var(--success);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+    50% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+}
+
+/* Dica mostrada abaixo do campo de descricao */
+.field-hint {
+    display: none;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--text-3);
+    align-items: center;
+    gap: 6px;
+}
+
+.field-hint.visible {
+    display: flex;
+}
+
+.field-hint i { color: var(--success); }
 
 .tx-meta {
     font-size: 0.78rem;
