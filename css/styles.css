@@ -562,12 +562,21 @@ body {
 .section-card-header {
     padding: 20px 24px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap; /* em telas estreitas o filtro vai para a linha de baixo */
+    gap: 12px;
 }
 
 .section-card-header h3 {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-2);
+}
+
+.section-card-header .search-field input {
+    width: 220px;
 }
 
 /* ========== TOOLBAR ========== */
@@ -1478,6 +1487,23 @@ body {
 /* ========== CONFIRM DIALOG ========== */
 .modal-confirm {
     max-width: 460px;
+}
+
+/* ========== INPUT DIALOG (edição de categoria/cartão) ========== */
+.modal-input {
+    max-width: 440px;
+}
+
+#inputFields {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+#inputFields input[type="color"] {
+    height: 46px;
+    padding: 4px 6px;
+    cursor: pointer;
 }
 
 .confirm-message {

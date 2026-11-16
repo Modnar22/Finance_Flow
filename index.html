@@ -180,6 +180,11 @@
                     <div class="section-card">
                         <div class="section-card-header">
                             <h3>Transações do Mês</h3>
+                            <div class="search-field">
+                                <i class="fas fa-magnifying-glass"></i>
+                                <input type="text" id="monthSearchInput" placeholder="Filtrar por nome..."
+                                    autocomplete="off" spellcheck="false">
+                            </div>
                         </div>
                         <div id="recentList" class="tx-list"></div>
                     </div>
@@ -423,6 +428,27 @@
                 <p class="confirm-message" id="confirmMessage"></p>
             </div>
             <div class="modal-footer confirm-footer" id="confirmActions"></div>
+        </div>
+    </div>
+
+    <!-- Input Dialog (substitui o prompt() nativo, indisponivel no Electron) -->
+    <div class="modal-backdrop" id="inputOverlay">
+        <div class="modal modal-input" id="inputModal">
+            <div class="modal-header">
+                <h3 id="inputDialogTitle">Editar</h3>
+                <button type="button" class="btn-close" id="btnCloseInputDialog">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <form id="inputForm" class="modal-body">
+                <div id="inputFields"></div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="btnCancelInputDialog">Cancelar</button>
+                <button type="submit" class="btn btn-primary" form="inputForm">
+                    <i class="fas fa-check"></i> Salvar
+                </button>
+            </div>
         </div>
     </div>
 

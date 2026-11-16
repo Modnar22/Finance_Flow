@@ -3,6 +3,7 @@ const app = {
     currentMonth: new Date().getMonth(),
     selectedType: 'expense',
     selectedRecurringType: 'expense',
+    monthSearch: '', // filtro por nome em "Transações do Mês"
 
     init() {
         Storage.init();
@@ -101,6 +102,12 @@ const app = {
         document.getElementById('filterCategory').addEventListener('change', () => this.renderTransactions());
         document.getElementById('searchInput').addEventListener('input', () => this.renderTransactions());
 
+        // Filtro por nome em "Transações do Mês" (dashboard)
+        document.getElementById('monthSearchInput').addEventListener('input', e => {
+            this.monthSearch = e.target.value;
+            this.renderDashboard();
+        });
+
         // History pills
         document.querySelectorAll('.pill[data-month]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -162,7 +169,7 @@ const app = {
             }
             if (installmentsOpen) return;
 
-            if (this.confirmOpen) return;
+            if (this.confirmOpen || this.inputOpen) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
             if (e.key === 'n' || e.key === 'N') { e.preventDefault(); this.openModal(); }
             if (e.key === 'ArrowLeft') { e.preventDefault(); this.changeMonth(-1); }
@@ -292,8 +299,17 @@ const app = {
         // Render individual cards
         this.renderCardsDashboard();
 
-        const sorted = Utils.sortByInsertion(tx);
-        this.renderTxList('recentList', sorted);
+        let sorted = Utils.sortByInsertion(tx);
+
+        // Filtro por nome em "Transações do Mês"
+        const query = (this.monthSearch || '').trim();
+        if (query) {
+            const q = Utils.normalizeDescription(query);
+            sorted = sorted.filter(t => Utils.normalizeDescription(t.description).includes(q));
+        }
+
+        this.renderTxList('recentList', sorted,
+            query ? `Nenhum lançamento com "<strong>${Utils.escapeHtml(query)}</strong>"` : null);
     },
 
     renderCardsDashboard() {
@@ -370,7 +386,7 @@ const app = {
         this.renderTxList('transactionList', tx);
     },
 
-    renderTxList(containerId, transactions) {
+    renderTxList(containerId, transactions, emptyMessage = null) {
         const container = document.getElementById(containerId);
         const cats = Storage.getCategories();
         const cards = Storage.getCards();
@@ -380,7 +396,7 @@ const app = {
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-receipt"></i></div>
                     <h4>Nenhuma transação</h4>
-                    <p>Adicione sua primeira transação para começar</p>
+                    <p>${emptyMessage || 'Adicione sua primeira transação para começar'}</p>
                 </div>`;
             return;
         }
@@ -739,6 +755,109 @@ const app = {
         });
     },
 
+    // Dialogo com campos de entrada (substitui o prompt() nativo, que nao
+    // existe no Electron e nao faz nada por la). Retorna uma Promise com
+    // { chave: valor } ou null se o usuario cancelar.
+    inputDialog({ title = 'Editar', fields = [], submitLabel = 'Salvar' }) {
+        return new Promise(resolve => {
+            const overlay = document.getElementById('inputOverlay');
+            const titleEl = document.getElementById('inputDialogTitle');
+            const fieldsEl = document.getElementById('inputFields');
+            const form = document.getElementById('inputForm');
+            const btnOk = document.querySelector('#inputModal button[form="inputForm"]');
+
+            let done = false;
+            const close = value => {
+                if (done) return;
+                done = true;
+                this.inputOpen = false;
+                overlay.classList.remove('active');
+                document.removeEventListener('keydown', onKey, true);
+                form.removeEventListener('submit', onSubmit);
+                resolve(value);
+            };
+
+            const onKey = e => {
+                if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    close(null);
+                }
+            };
+
+            const onSubmit = e => {
+                e.preventDefault();
+                const values = {};
+
+                for (const f of fields) {
+                    const el = document.getElementById('field_' + f.key);
+                    if (!el) continue;
+
+                    let v = el.value;
+                    if (f.type === 'number') v = v.trim() === '' ? null : parseFloat(v);
+
+                    if (f.required && (v === null || String(v).trim() === '')) {
+                        Utils.toast(`Preencha: ${f.label}`, 'error');
+                        el.focus();
+                        return;
+                    }
+                    if (f.type === 'number') {
+                        if (v === null || isNaN(v) || (f.min !== undefined && v < f.min)) {
+                            Utils.toast(`Valor inválido em: ${f.label}`, 'error');
+                            el.focus();
+                            return;
+                        }
+                    }
+
+                    values[f.key] = typeof v === 'string' ? v.trim() : v;
+                }
+
+                close(values);
+            };
+
+            titleEl.textContent = title;
+            if (btnOk) btnOk.innerHTML = `<i class="fas fa-check"></i> ${Utils.escapeHtml(submitLabel)}`;
+
+            fieldsEl.innerHTML = fields.map(f => {
+                const id = 'field_' + f.key;
+                const type = f.type || 'text';
+                const value = String(f.value === undefined || f.value === null ? '' : f.value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;');
+                return `
+                    <div class="form-section">
+                        <label class="form-label" for="${id}">${f.label}</label>
+                        <input class="form-input" id="${id}" name="${f.key}" type="${type}" value="${value}"
+                            ${f.placeholder ? `placeholder="${f.placeholder}"` : ''}
+                            ${f.min !== undefined ? `min="${f.min}"` : ''}
+                            ${f.step !== undefined ? `step="${f.step}"` : ''}
+                            ${f.required ? 'required' : ''} autocomplete="off">
+                    </div>`;
+            }).join('');
+
+            form.addEventListener('submit', onSubmit);
+            document.getElementById('btnCloseInputDialog').onclick = () => close(null);
+            document.getElementById('btnCancelInputDialog').onclick = () => close(null);
+
+            // O clique fora NAO fecha (mesma regra do modal de lancamento).
+            this.inputOpen = true;
+            overlay.classList.add('active');
+            document.addEventListener('keydown', onKey, true);
+
+            // foca o primeiro campo (tentativa imediata + reforço apos o layout)
+            const focusFirst = () => {
+                const first = fieldsEl.querySelector('input');
+                if (first) {
+                    first.focus();
+                    if (first.select) first.select();
+                }
+            };
+            focusFirst();
+            setTimeout(focusFirst, 60);
+        });
+    },
+
     // ========== PANEL DE PARCELAS ==========
     openInstallments(groupId) {
         const group = Storage.getTransactions()
@@ -1059,17 +1178,26 @@ const app = {
         Utils.toast(`Cartão "${name}" adicionado!`, 'success');
     },
 
-    editCard(id) {
+    async editCard(id) {
         const card = Storage.getCardById(id);
         if (!card) return;
 
-        const newName = prompt('Nome do cartão:', Utils.formatCardName(card.name));
-        if (newName === null) return;
+        const values = await this.inputDialog({
+            title: 'Editar cartão',
+            fields: [
+                { key: 'name', label: 'Nome do cartão', type: 'text', value: Utils.formatCardName(card.name), required: true },
+                { key: 'limit', label: 'Limite do cartão (R$)', type: 'number', value: card.limit, min: 0.01, step: '0.01', required: true }
+            ]
+        });
+        if (!values) return;
 
-        const newLimit = prompt('Limite do cartão:', card.limit);
-        if (newLimit === null) return;
+        const name = Utils.formatCardName(values.name);
+        if (!name) { Utils.toast('Digite um nome para o cartão', 'error'); return; }
 
-        Storage.updateCard(id, { name: Utils.formatCardName(newName), limit: parseFloat(newLimit) || 0 });
+        const limit = parseFloat(values.limit);
+        if (!(limit > 0)) { Utils.toast('Defina um limite maior que zero', 'error'); return; }
+
+        Storage.updateCard(id, { name, limit });
         this.populateCardSelect();
         this.renderSettings();
         this.renderDashboard();
@@ -1139,16 +1267,33 @@ const app = {
         Utils.toast(`Categoria "${name}" criada!`, 'success');
     },
 
-    editCategory(id) {
+    async editCategory(id) {
         const cat = Storage.getCategoryById(id);
         if (!cat) return;
-        const newName = prompt('Nome da categoria:', cat.name);
-        if (newName === null || !newName.trim()) return;
-        const newColor = prompt('Cor (hex):', cat.color);
-        if (newColor === null) return;
-        Storage.updateCategory(id, { name: newName.trim(), color: newColor || cat.color });
+
+        // o <input type="color"> so aceita #rrggbb
+        const safeColor = /^#[0-9a-f]{6}$/i.test(cat.color) ? cat.color : '#6366f1';
+
+        const values = await this.inputDialog({
+            title: 'Editar categoria',
+            fields: [
+                { key: 'name', label: 'Nome da categoria', type: 'text', value: cat.name, required: true },
+                { key: 'color', label: 'Cor', type: 'color', value: safeColor }
+            ]
+        });
+        if (!values) return;
+
+        const name = values.name.trim();
+        if (!name) { Utils.toast('Digite um nome para a categoria', 'error'); return; }
+
+        // o campo cor pode chegar como texto em navegadores sem <input type=color>
+        const color = /^#[0-9a-f]{6}$/i.test(values.color || '') ? values.color : safeColor;
+
+        Storage.updateCategory(id, { name, color });
         this.populateCategorySelects();
         this.renderSettings();
+        this.renderDashboard();
+        this.renderTransactions();
         Utils.toast('Categoria atualizada!', 'success');
     },
 
