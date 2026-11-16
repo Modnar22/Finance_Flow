@@ -88,7 +88,7 @@ function createWindow() {
                         dialog.showMessageBox(mainWindow, {
                             type: 'info',
                             title: 'Sobre FinanceFlow',
-                            message: 'FinanceFlow v1.1.0',
+                            message: 'FinanceFlow v1.1.1',
                             detail: 'Dashboard financeiro pessoal com interface moderna.\n\nDesenvolvido por Mateus Gouveia\nGitHub: github.com/Modnar22\n\nLicença: MIT'
                         });
                     }

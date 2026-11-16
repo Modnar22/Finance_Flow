@@ -1,4 +1,4 @@
-# FinanceFlow v1.1.0
+# FinanceFlow v1.1.1
 
 Dashboard financeiro pessoal com interface moderna e funcionalidades completas.
 
@@ -6,6 +6,11 @@ Dashboard financeiro pessoal com interface moderna e funcionalidades completas.
 
 **Mateus Gouveia**  
 GitHub: [github.com/Modnar22](https://github.com/Modnar22)
+
+## Novidades da v1.1.1
+
+- Botões **Editar** de categoria e de cartão voltam a funcionar (abrem uma janela própria, pois o `prompt()` não existe no app desktop)
+- Novo **filtro por nome em "Transações do Mês"**: digite "Uber" e só ficam os lançamentos com esse nome (também encontra partes do nome, sem diferenciar maiúsculas/acentos)
 
 ## Novidades da v1.1.0
 
@@ -35,13 +40,13 @@ GitHub: [github.com/Modnar22](https://github.com/Modnar22)
 
 | Sistema | Arquivo | Tamanho |
 |---------|---------|---------|
-| Windows | [FinanceFlow-Setup-1.1.0.exe](https://github.com/Modnar22/Finance_Flow/releases/download/v1.1.0_Windows/FinanceFlow-Setup-1.1.0.exe) | 73 MB |
-| Linux (Debian/Ubuntu) | [financeflow_1.1.0_amd64.deb](https://github.com/Modnar22/Finance_Flow/releases/download/v1.1.0/financeflow_1.1.0_amd64.deb) | 70 MB |
-| Android | [app-debug.apk](https://github.com/Modnar22/Finance_Flow/releases/download/v1.1.0_APK/app-debug.apk) | 1,5 MB |
+| Windows | [FinanceFlow-Setup-1.1.1.exe](https://github.com/Modnar22/Finance_Flow/releases/download/v1.1.1_Windows/FinanceFlow-Setup-1.1.1.exe) | 73 MB |
+| Linux (Debian/Ubuntu) | [financeflow_1.1.1_amd64.deb](https://github.com/Modnar22/Finance_Flow/releases/download/v1.1.1/financeflow_1.1.1_amd64.deb) | 70 MB |
+| Android | [app-debug.apk](https://github.com/Modnar22/Finance_Flow/releases/download/v1.1.1_APK/app-debug.apk) | 1,5 MB |
 
 **Windows:** baixe o `.exe`, dê duplo clique e siga o assistente de instalação.
 
-**Linux:** `sudo dpkg -i financeflow_1.1.0_amd64.deb`
+**Linux:** `sudo dpkg -i financeflow_1.1.1_amd64.deb`
 
 **Android:** baixe o `.apk` no celular e permita a instalação de fontes desconhecidas quando solicitado.
 
